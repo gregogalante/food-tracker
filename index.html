@@ -80,7 +80,6 @@
                 console.error('Error loading nutritional targets:', err);
             }
         };
-
         loadDailyTargets();
 
         function Auth({ onAuthenticate }) {
@@ -700,6 +699,7 @@
         function App() {
             const { useState, useEffect } = React;
             
+            const [authenticating, setAuthenticating] = useState(true);
             const [authenticated, setAuthenticated] = useState(false);
             const [currentDate, setCurrentDate] = useState(() => {
                 const today = new Date();
@@ -725,6 +725,8 @@
                         }
                     } catch (err) {
                         console.error(err);
+                    } finally {
+                        setAuthenticating(false);
                     }
                 };
                 
@@ -818,6 +820,14 @@
                 const options = { weekday: 'long', day: 'numeric', month: 'long' };
                 return new Date(dateString).toLocaleDateString('en-US', options);
             };
+
+            if (authenticating) {
+                return (
+                    <div className="flex items-center justify-center h-screen">
+                        <i className="fas fa-spinner fa-spin text-3xl text-blue-500"></i>
+                    </div>
+                );
+            }
             
             if (!authenticated) {
                 return <Auth onAuthenticate={() => setAuthenticated(true)} />;
