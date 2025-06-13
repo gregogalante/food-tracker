@@ -15,3 +15,19 @@ This application allows users to track their food intake, manage their diet, and
 3. Update the `pwa/manifest.json` file with your application details (correct start URL etc.).
 
 4. Enjoy your food tracker!
+
+## Protect data
+
+Here there is an example of .htaccess to avoid direct access to data stored on `data/` folder and return a 403 error:
+
+```apache
+Deny from all
+
+Options -Indexes
+
+<Files ".htaccess">
+    Require all denied
+</Files>
+
+ErrorDocument 403 "Access to this resource is forbidden."
+```
