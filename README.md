@@ -1,5 +1,17 @@
 # Food Tracker
 
-A simple food tracker application built with Vibe Coding.
+<img src="/icon.png" alt="Food Tracker Icon" width="100">
 
-Modifica la componente Calendar. Utilizza la action "month" definita in api.php per scaricare il report del mese visualizzato. Evidenzia in verde le date per cui ci sono dati e non sono state superate le calorie giornaliere. In rosso quelle in cui sono state superate.
+A simple **food tracker application** built with Vibe Coding.
+
+This application allows users to track their food intake, manage their diet, and monitor their nutritional goals using OpenAI API to calculate nutritional values.
+
+## Installation
+
+1. Copy the folder content on a PHP server.
+
+2. Rename the `config.example.php` file to `config.php` and fill in your configuration.
+
+3. Update the `pwa/manifest.json` file with your application details (correct start URL etc.).
+
+4. Enjoy your food tracker!

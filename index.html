@@ -2,7 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no,user-scalable=no,interactive-widget=resizes-content">
+
     <title>FoodTracker - Monitoraggio Calorie</title>
 
     <link rel="manifest" href="./pwa/manifest.json">
@@ -74,7 +75,6 @@
                         proteins: data.data.daily_proteins_target,
                         fats: data.data.daily_fats_target
                     };
-                    console.log('Target nutrizionali caricati dal server:', DAILY_TARGETS);
                 }
             } catch (err) {
                 console.error('Errore nel caricamento dei target nutrizionali:', err);
@@ -207,39 +207,39 @@
                     
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <div className="flex justify-between text-sm">
-                                <span>Carboidrati</span>
+                            <div className="flex justify-between text-sm mb-2">
+                                <span>Carb.</span>
                                 <span>{totals.carbs.toFixed(0)}g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
-                                    className="bg-yellow-500 h-2 rounded-full"
+                                    className={`h-2 rounded-full ${percentages.carbs >= 100 ? 'bg-red-500' : 'bg-yellow-500'}`}
                                     style={{ width: `${Math.min(percentages.carbs, 100)}%` }}
                                 ></div>
                             </div>
                         </div>
                         
                         <div>
-                            <div className="flex justify-between text-sm">
-                                <span>Proteine</span>
+                            <div className="flex justify-between text-sm mb-2">
+                                <span>Prot.</span>
                                 <span>{totals.proteins.toFixed(0)}g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
-                                    className="bg-blue-500 h-2 rounded-full"
+                                    className={`h-2 rounded-full ${percentages.proteins >= 100 ? 'bg-red-500' : 'bg-blue-500'}`}
                                     style={{ width: `${Math.min(percentages.proteins, 100)}%` }}
                                 ></div>
                             </div>
                         </div>
                         
                         <div>
-                            <div className="flex justify-between text-sm">
+                            <div className="flex justify-between text-sm mb-2">
                                 <span>Grassi</span>
                                 <span>{totals.fats.toFixed(0)}g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
-                                    className="bg-purple-500 h-2 rounded-full"
+                                    className={`h-2 rounded-full ${percentages.fats >= 100 ? 'bg-red-500' : 'bg-purple-500'}`}
                                     style={{ width: `${Math.min(percentages.fats, 100)}%` }}
                                 ></div>
                             </div>
@@ -302,12 +302,9 @@
                 <div className="bg-white rounded-lg shadow-md p-4 mb-4">
                     {!isEditing ? (
                         <>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="font-medium">{record.input}</p>
-                                    {record.feedback && (
-                                        <p className="text-sm italic mt-2 text-gray-600">"{record.feedback}"</p>
-                                    )}
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="mr-3">
+                                    <p className="font-bold text-xl">{record.calorie} kcal</p>
                                 </div>
                                 <div className="flex space-x-2">
                                     <ButtonIcon
@@ -322,12 +319,14 @@
                                     />
                                 </div>
                             </div>
+
+                            <p className="font-medium text-lg">{record.input}</p>
+
+                            {record.feedback && (
+                                <p className="text-sm italic mt-2 text-gray-600">"{record.feedback}"</p>
+                            )}
                             
-                            <div className="grid grid-cols-4 gap-4 mt-3 pt-3 border-t border-gray-100">
-                                <div>
-                                    <p className="text-xs text-gray-500">Calorie</p>
-                                    <p className="font-medium">{record.calorie} kcal</p>
-                                </div>
+                            <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-gray-100">
                                 <div>
                                     <p className="text-xs text-gray-500">Carboidrati</p>
                                     <p className="font-medium">{record.grammi_carboidrati}g</p>
@@ -501,6 +500,38 @@
                 };
             });
             
+            const [currentMonthData, setCurrentMonthData] = useState(monthData);
+            const [loading, setLoading] = useState(false);
+            
+            // Quando cambia il mese corrente, scarica i dati del mese
+            useEffect(() => {
+                const fetchMonthData = async () => {
+                    if (!currentMonth) return;
+                    
+                    const monthStr = (currentMonth.month + 1).toString().padStart(2, '0');
+                    const monthYearStr = `${currentMonth.year}-${monthStr}`; // YYYY-MM
+                    
+                    setLoading(true);
+                    try {
+                        const response = await fetch(`api.php?action=month&month=${monthYearStr}`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            setCurrentMonthData({ days: data.data });
+                        } else {
+                            setCurrentMonthData({ days: [] });
+                        }
+                    } catch (err) {
+                        console.error('Errore nel caricamento dei dati del mese:', err);
+                        setCurrentMonthData({ days: [] });
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                
+                fetchMonthData();
+            }, [currentMonth]);
+            
             // Genera un array di giorni per il mese corrente
             const generateCalendarDays = () => {
                 const days = [];
@@ -531,9 +562,13 @@
                     const isSelected = dateStr === selectedDate;
                     
                     // Verifica se il giorno ha dati
-                    const dayData = monthData?.days?.find(day => day.date === dateStr);
+                    const dayData = currentMonthData?.days?.find(day => day.date === dateStr);
                     const hasData = !!dayData;
-                    const targetReached = dayData ? dayData.calorie >= DAILY_TARGETS.calories : false;
+                    // Controlla se le calorie giornaliere sono state superate
+                    const carbsExceeded = dayData && dayData.carboidrati >= DAILY_TARGETS.carbs;
+                    const proteinsExceeded = dayData && dayData.proteine >= DAILY_TARGETS.proteins;
+                    const fatsExceeded = dayData && dayData.grassi >= DAILY_TARGETS.fats;
+                    const caloriesExceeded = dayData && dayData.calorie >= DAILY_TARGETS.calories;
                     
                     days.push({
                         day: i,
@@ -541,7 +576,10 @@
                         isToday,
                         isSelected,
                         hasData,
-                        targetReached
+                        caloriesExceeded,
+                        carbsExceeded,
+                        proteinsExceeded,
+                        fatsExceeded,
                     });
                 }
                 
@@ -586,6 +624,7 @@
                         </button>
                         <h3 className="text-lg font-medium">
                             {monthNames[currentMonth.month]} {currentMonth.year}
+                            {loading && <i className="fas fa-spinner fa-spin ml-2 text-sm text-gray-500"></i>}
                         </h3>
                         <button 
                             onClick={nextMonth}
@@ -612,7 +651,7 @@
                                         className={`w-full h-full flex items-center justify-center text-sm rounded-full
                                             ${day.isSelected ? 'bg-blue-500 text-white' : ''}
                                             ${day.isToday && !day.isSelected ? 'border-2 border-blue-500' : ''}
-                                            ${day.hasData && !day.isSelected ? (day.targetReached ? 'bg-red-100' : 'bg-green-100') : ''}
+                                            ${day.hasData && !day.isSelected ? (day.caloriesExceeded ? 'bg-red-100' : (day.carbsExceeded || day.proteinsExceeded || day.fatsExceeded ? 'bg-yellow-100' : 'bg-green-100')) : ''}
                                             ${!day.hasData && !day.isSelected ? 'hover:bg-gray-100' : ''}
                                         `}
                                     >
@@ -718,9 +757,9 @@
                 fetchDayData();
             }, [authenticated, currentDate]);
             
-            // Carica i dati del mese per il calendario
+            // Carica i dati del mese iniziale per il calendario
             useEffect(() => {
-                const fetchMonthData = async () => {
+                const fetchInitialMonthData = async () => {
                     if (!authenticated) return;
                     
                     const month = currentDate.substring(0, 7); // YYYY-MM
@@ -730,7 +769,7 @@
                         const data = await response.json();
                         
                         if (data.success) {
-                            setMonthData(data.data);
+                            setMonthData({ days: data.data });
                         } else {
                             setMonthData(null);
                         }
@@ -740,12 +779,12 @@
                     }
                 };
                 
-                fetchMonthData();
-            }, [authenticated, currentDate]);
+                fetchInitialMonthData();
+            }, [authenticated]);
             
             const handleAddRecord = (record) => {
                 setDayData(prev => {
-                    const newRecords = [...(prev?.records || []), record];
+                    const newRecords = [record, ...(prev?.records || [])];
                     return {
                         ...prev,
                         records: newRecords
