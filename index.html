@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodTracker - Monitoraggio Calorie</title>
+
+    <link rel="manifest" href="./pwa/manifest.json">
+    <meta name="application-name" content="FoodTracker">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="full-screen" content="yes">
+    <meta name="browsermode" content="application">
+    <meta name="screen-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="FoodTracker">
+    <link rel="icon" type="image/png" sizes="16x16" href="./pwa/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./pwa/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="./pwa/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./pwa/favicon-192x192.png">
+    <link rel="icon" href="./pwa/favicon.ico">
+    <link rel="apple-touch-icon" sizes="57x57" href="./pwa/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="./pwa/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="./pwa/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="./pwa/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="./pwa/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="./pwa/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="./pwa/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./pwa/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./pwa/apple-icon-180x180.png">
+    <link rel="icon" sizes="36x36" href="./pwa/android-icon-36x36.png">
+    <link rel="icon" sizes="48x48" href="./pwa/android-icon-48x48.png">
+    <link rel="icon" sizes="72x72" href="./pwa/android-icon-72x72.png">
+    <link rel="icon" sizes="96x96" href="./pwa/android-icon-96x96.png">
+    <link rel="icon" sizes="144x144" href="./pwa/android-icon-144x144.png">
+    <link rel="icon" sizes="192x192" href="./pwa/android-icon-192x192.png">
+    <link rel="icon" sizes="512x512" href="./pwa/android-icon-512x512.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <div id="root" class="container mx-auto py-4 px-4 max-w-4xl"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        let DAILY_TARGETS = {
+            calories: 0, 
+            carbs: 0,   // grammi
+            proteins: 0, // grammi
+            fats: 0      // grammi
+        };
+
+        const loadDailyTargets = async () => {
+            try {
+                const response = await fetch(`api.php?action=get-config`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    DAILY_TARGETS = {
+                        calories: data.data.daily_calories_target,
+                        carbs: data.data.daily_carbs_target,
+                        proteins: data.data.daily_proteins_target,
+                        fats: data.data.daily_fats_target
+                    };
+                    console.log('Target nutrizionali caricati dal server:', DAILY_TARGETS);
+                }
+            } catch (err) {
+                console.error('Errore nel caricamento dei target nutrizionali:', err);
+            }
+        };
+
+        loadDailyTargets();
+
+        function Auth({ onAuthenticate }) {
+            const [code, setCode] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (code.length !== 6 || !/^\d+$/.test(code)) {
+                    setError('Il codice deve essere di 6 cifre numeriche');
+                    return;
+                }
+                
+                setLoading(true);
+                setError('');
+                
+                try {
+                    const response = await fetch(`api.php?action=authenticate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Ricarica i target nutrizionali prima di completare l'autenticazione
+                        await loadDailyTargets();
+                        onAuthenticate();
+                    } else {
+                        setError(data.message || 'Codice non valido');
+                    }
+                } catch (err) {
+                    setError('Errore di connessione');
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            return (
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+                        <h1 className="text-2xl font-bold text-center mb-6">FoodTracker</h1>
+                        <p className="text-gray-600 text-center mb-6">
+                            Inserisci il tuo codice di autenticazione a 6 cifre
+                        </p>
+                        
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-4">
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest"
+                                    placeholder="______"
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value.slice(0, 6))}
+                                    maxLength={6}
+                                />
+                            </div>
+                            
+                            {error && (
+                                <div className="mb-4 text-red-500 text-center">
+                                    {error}
+                                </div>
+                            )}
+                            
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition disabled:opacity-70"
+                                disabled={loading}
+                            >
+                                {loading ? 'Verifica in corso...' : 'Accedi'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function NutritionSummary({ dayData }) {
+            const records = dayData?.records || [];
+            
+            // Calcolare il totale dei valori nutritivi
+            const totals = records.reduce((acc, record) => {
+                return {
+                    calories: acc.calories + (parseFloat(record.calorie) || 0),
+                    carbs: acc.carbs + (parseFloat(record.grammi_carboidrati) || 0),
+                    proteins: acc.proteins + (parseFloat(record.grammi_proteine) || 0),
+                    fats: acc.fats + (parseFloat(record.grammi_grassi) || 0)
+                };
+            }, { calories: 0, carbs: 0, proteins: 0, fats: 0 });
+            
+            // Calcolare le percentuali rispetto ai target
+            const percentages = {
+                calories: (totals.calories / DAILY_TARGETS.calories) * 100,
+                carbs: (totals.carbs / DAILY_TARGETS.carbs) * 100,
+                proteins: (totals.proteins / DAILY_TARGETS.proteins) * 100,
+                fats: (totals.fats / DAILY_TARGETS.fats) * 100
+            };
+            
+            // Target raggiunto o superato
+            const targetReached = percentages.calories >= 100;
+            
+            return (
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Riepilogo del giorno</h3>
+                    
+                    <div className="flex justify-between items-center mb-2">
+                        <span>Calorie</span>
+                        <span className={`font-medium ${targetReached ? 'text-red-500' : 'text-green-500'}`}>
+                            {totals.calories.toFixed(0)} / {DAILY_TARGETS.calories} kcal
+                        </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                        <div 
+                            className={`h-2 rounded-full ${targetReached ? 'bg-red-500' : 'bg-green-500'}`}
+                            style={{ width: `${Math.min(percentages.calories, 100)}%` }}
+                        ></div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <div className="flex justify-between text-sm">
+                                <span>Carboidrati</span>
+                                <span>{totals.carbs.toFixed(0)}g</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                <div 
+                                    className="bg-yellow-500 h-2 rounded-full"
+                                    style={{ width: `${Math.min(percentages.carbs, 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div className="flex justify-between text-sm">
+                                <span>Proteine</span>
+                                <span>{totals.proteins.toFixed(0)}g</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                <div 
+                                    className="bg-blue-500 h-2 rounded-full"
+                                    style={{ width: `${Math.min(percentages.proteins, 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div className="flex justify-between text-sm">
+                                <span>Grassi</span>
+                                <span>{totals.fats.toFixed(0)}g</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                <div 
+                                    className="bg-purple-500 h-2 rounded-full"
+                                    style={{ width: `${Math.min(percentages.fats, 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function RecordItem({ record, onEdit, onDelete, date }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editedRecord, setEditedRecord] = useState({...record});
+            
+            const handleSave = async () => {
+                try {
+                    const response = await fetch(`api.php?action=record-update&date=${date}&uuid=${record.uuid}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(editedRecord)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        onEdit(editedRecord);
+                        setIsEditing(false);
+                    } else {
+                        alert(data.message || 'Errore durante l\'aggiornamento');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Errore di connessione');
+                }
+            };
+            
+            const handleDelete = async () => {
+                if (confirm('Sei sicuro di voler eliminare questo record?')) {
+                    try {
+                        const response = await fetch(`api.php?action=record-delete&date=${date}&uuid=${record.uuid}`, {
+                            method: 'POST'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            onDelete(record.uuid);
+                        } else {
+                            alert(data.message || 'Errore durante l\'eliminazione');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Errore di connessione');
+                    }
+                }
+            };
+            
+            return (
+                <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                    {!isEditing ? (
+                        <>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-medium">{record.input}</p>
+                                    {record.feedback && (
+                                        <p className="text-sm italic mt-2 text-gray-600">"{record.feedback}"</p>
+                                    )}
+                                </div>
+                                <div className="flex space-x-2">
+                                    <ButtonIcon
+                                        icon="edit"
+                                        onClick={() => setIsEditing(true)}
+                                        theme="primary"
+                                    />
+                                    <ButtonIcon
+                                        icon="trash"
+                                        onClick={handleDelete}
+                                        theme="danger"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-4 gap-4 mt-3 pt-3 border-t border-gray-100">
+                                <div>
+                                    <p className="text-xs text-gray-500">Calorie</p>
+                                    <p className="font-medium">{record.calorie} kcal</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Carboidrati</p>
+                                    <p className="font-medium">{record.grammi_carboidrati}g</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Proteine</p>
+                                    <p className="font-medium">{record.grammi_proteine}g</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Grassi</p>
+                                    <p className="font-medium">{record.grammi_grassi}g</p>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-1">
+                                    Descrizione
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border border-gray-300 rounded bg-gray-100"
+                                    value={editedRecord.input}
+                                    onChange={(e) => setEditedRecord({...editedRecord, input: e.target.value})}
+                                    readOnly
+                                />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-1">
+                                        Calorie (kcal)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border border-gray-300 rounded"
+                                        value={editedRecord.calorie}
+                                        onChange={(e) => setEditedRecord({...editedRecord, calorie: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-1">
+                                        Carboidrati (g)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border border-gray-300 rounded"
+                                        value={editedRecord.grammi_carboidrati}
+                                        onChange={(e) => setEditedRecord({...editedRecord, grammi_carboidrati: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-1">
+                                        Proteine (g)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border border-gray-300 rounded"
+                                        value={editedRecord.grammi_proteine}
+                                        onChange={(e) => setEditedRecord({...editedRecord, grammi_proteine: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-1">
+                                        Grassi (g)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border border-gray-300 rounded"
+                                        value={editedRecord.grammi_grassi}
+                                        onChange={(e) => setEditedRecord({...editedRecord, grammi_grassi: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-end space-x-2">
+                                <Button
+                                    theme="danger"
+                                    label="Annulla"
+                                    onClick={() => setIsEditing(false)}
+                                />
+                                <Button
+                                    theme="primary"
+                                    label="Salva"
+                                    onClick={handleSave}
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        function AddRecordForm({ onAddRecord, date }) {
+            const [input, setInput] = useState('');
+            const [loading, setLoading] = useState(false);
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (!input.trim()) {
+                    return;
+                }
+                
+                setLoading(true);
+                
+                try {
+                    const response = await fetch(`api.php?action=record-create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            input,
+                            date
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        onAddRecord(data.data);
+                        setInput('');
+                    } else {
+                        alert(data.message || 'Errore durante l\'inserimento');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Errore di connessione');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            return (
+                <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Aggiungi un nuovo alimento</h3>
+                    
+                    <div className="mb-4">
+                        <textarea
+                            className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Descrivi cosa hai mangiato (es. '100g di pasta al pomodoro, 200g di insalata mista, 1 mela')"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            rows={3}
+                        ></textarea>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                        <Button
+                            type="primary"
+                            loading={loading}
+                            disabled={loading}
+                            label="Aggiungi"
+                        />
+                    </div>
+                </form>
+            );
+        }
+
+        function Calendar({ onSelectDate, selectedDate, monthData }) {
+            const [currentMonth, setCurrentMonth] = useState(() => {
+                const date = new Date(selectedDate);
+                return {
+                    month: date.getMonth(),
+                    year: date.getFullYear()
+                };
+            });
+            
+            // Genera un array di giorni per il mese corrente
+            const generateCalendarDays = () => {
+                const days = [];
+                const date = new Date(currentMonth.year, currentMonth.month, 1);
+                const today = new Date();
+                
+                // Ottieni il primo giorno della settimana per il primo giorno del mese
+                const firstDayOfWeek = date.getDay();
+                
+                // Aggiungi giorni vuoti all'inizio per allineare il calendario
+                for (let i = 0; i < firstDayOfWeek; i++) {
+                    days.push({ day: null, empty: true });
+                }
+                
+                // Aggiungi tutti i giorni del mese
+                const daysInMonth = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate();
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const dayStr = i.toString().padStart(2, '0');
+                    const monthStr = (currentMonth.month + 1).toString().padStart(2, '0');
+                    const dateStr = `${currentMonth.year}-${monthStr}-${dayStr}`;
+                    
+                    const isToday = (
+                        i === today.getDate() && 
+                        currentMonth.month === today.getMonth() && 
+                        currentMonth.year === today.getFullYear()
+                    );
+                    
+                    const isSelected = dateStr === selectedDate;
+                    
+                    // Verifica se il giorno ha dati
+                    const dayData = monthData?.days?.find(day => day.date === dateStr);
+                    const hasData = !!dayData;
+                    const targetReached = dayData ? dayData.calorie >= DAILY_TARGETS.calories : false;
+                    
+                    days.push({
+                        day: i,
+                        date: dateStr,
+                        isToday,
+                        isSelected,
+                        hasData,
+                        targetReached
+                    });
+                }
+                
+                return days;
+            };
+            
+            const days = generateCalendarDays();
+            
+            const prevMonth = () => {
+                setCurrentMonth(prev => {
+                    const newMonth = prev.month - 1;
+                    if (newMonth < 0) {
+                        return { month: 11, year: prev.year - 1 };
+                    }
+                    return { ...prev, month: newMonth };
+                });
+            };
+            
+            const nextMonth = () => {
+                setCurrentMonth(prev => {
+                    const newMonth = prev.month + 1;
+                    if (newMonth > 11) {
+                        return { month: 0, year: prev.year + 1 };
+                    }
+                    return { ...prev, month: newMonth };
+                });
+            };
+            
+            const monthNames = [
+                'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+            ];
+            
+            return (
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6 mx-auto max-w-md">
+                    <div className="flex justify-between items-center mb-4">
+                        <button 
+                            onClick={prevMonth}
+                            className="p-1 hover:bg-gray-100 rounded"
+                        >
+                            <i className="fas fa-chevron-left"></i>
+                        </button>
+                        <h3 className="text-lg font-medium">
+                            {monthNames[currentMonth.month]} {currentMonth.year}
+                        </h3>
+                        <button 
+                            onClick={nextMonth}
+                            className="p-1 hover:bg-gray-100 rounded"
+                        >
+                            <i className="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                        {['D', 'L', 'M', 'M', 'G', 'V', 'S'].map((day, idx) => (
+                            <div key={idx} className="text-sm font-medium text-gray-500">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-7 gap-1 text-center">
+                        {days.map((day, idx) => (
+                            <div key={idx} className="aspect-square">
+                                {!day.empty && (
+                                    <button
+                                        onClick={() => day.date && onSelectDate(day.date)}
+                                        className={`w-full h-full flex items-center justify-center text-sm rounded-full
+                                            ${day.isSelected ? 'bg-blue-500 text-white' : ''}
+                                            ${day.isToday && !day.isSelected ? 'border-2 border-blue-500' : ''}
+                                            ${day.hasData && !day.isSelected ? (day.targetReached ? 'bg-red-100' : 'bg-green-100') : ''}
+                                            ${!day.hasData && !day.isSelected ? 'hover:bg-gray-100' : ''}
+                                        `}
+                                    >
+                                        {day.day}
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function ButtonIcon({ icon, onClick, className, theme = 'white', disabled = false, loading = false }) {
+            const buttonClass = `flex items-center justify-center rounded-full shadow-md transition w-10 h-10
+                ${theme === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
+                ${theme === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : ''}
+                ${theme === 'white' ? 'bg-white text-blue-600 hover:bg-gray-100' : ''}
+                ${className || ''}`;
+            
+            return (
+                <button onClick={onClick} className={buttonClass} disabled={disabled}>
+                    {loading ? 
+                        <i className="fas fa-spinner fa-spin text-lg"></i> : 
+                        <i className={`fas fa-${icon} text-lg`}></i>}
+                </button>
+            );
+        }
+
+        function Button({ label, onClick, className, theme = 'primary', disabled = false, loading = false }) {
+            const buttonClass = `px-4 py-2 rounded-full shadow-md transition
+                ${theme === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
+                ${theme === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : ''}
+                ${theme === 'white' ? 'bg-white text-blue-600 hover:bg-gray-100' : ''}
+                ${className || ''}`;
+            
+            return (
+                <button onClick={onClick} className={buttonClass} disabled={disabled}>
+                    {loading ? 
+                        <i className="fas fa-spinner fa-spin text-lg"></i> : 
+                        label}
+                </button>
+            );
+        }
+
+        function App() {
+            const { useState, useEffect } = React;
+            
+            const [authenticated, setAuthenticated] = useState(false);
+            const [currentDate, setCurrentDate] = useState(() => {
+                const today = new Date();
+                return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            });
+            const [dayData, setDayData] = useState(null);
+            const [monthData, setMonthData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [showCalendar, setShowCalendar] = useState(false);
+            
+            // Verifica se l'utente è autenticato
+            useEffect(() => {
+                // Verifica se esiste un cookie di autenticazione
+                const checkAuth = async () => {
+                    try {
+                        const response = await fetch(`api.php?action=check-auth`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            setAuthenticated(true);
+                            // Ricarica i target nutrizionali dopo l'autenticazione
+                            await loadDailyTargets();
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                };
+                
+                checkAuth();
+            }, []);
+            
+            // Carica i dati del giorno selezionato
+            useEffect(() => {
+                const fetchDayData = async () => {
+                    if (!authenticated) return;
+                    
+                    setLoading(true);
+                    try {
+                        const response = await fetch(`api.php?action=date&date=${currentDate}`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            setDayData(data.data);
+                        } else {
+                            setDayData(null);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        setDayData(null);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                
+                fetchDayData();
+            }, [authenticated, currentDate]);
+            
+            // Carica i dati del mese per il calendario
+            useEffect(() => {
+                const fetchMonthData = async () => {
+                    if (!authenticated) return;
+                    
+                    const month = currentDate.substring(0, 7); // YYYY-MM
+                    
+                    try {
+                        const response = await fetch(`api.php?action=month&month=${month}`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            setMonthData(data.data);
+                        } else {
+                            setMonthData(null);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        setMonthData(null);
+                    }
+                };
+                
+                fetchMonthData();
+            }, [authenticated, currentDate]);
+            
+            const handleAddRecord = (record) => {
+                setDayData(prev => {
+                    const newRecords = [...(prev?.records || []), record];
+                    return {
+                        ...prev,
+                        records: newRecords
+                    };
+                });
+            };
+            
+            const handleEditRecord = (editedRecord) => {
+                setDayData(prev => {
+                    const newRecords = prev.records.map(record => 
+                        record.uuid === editedRecord.uuid ? editedRecord : record
+                    );
+                    return {
+                        ...prev,
+                        records: newRecords
+                    };
+                });
+            };
+            
+            const handleDeleteRecord = (uuid) => {
+                setDayData(prev => {
+                    const newRecords = prev.records.filter(record => record.uuid !== uuid);
+                    return {
+                        ...prev,
+                        records: newRecords
+                    };
+                });
+            };
+            
+            const formatDate = (dateString) => {
+                const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+                return new Date(dateString).toLocaleDateString('it-IT', options);
+            };
+            
+            if (!authenticated) {
+                return <Auth onAuthenticate={() => setAuthenticated(true)} />;
+            }
+            
+            return (
+                <div className="">
+                    <header className="bg-blue-600 text-white shadow-md py-4 px-4 mb-6 flex justify-between items-center rounded">
+                        <h1 className="text-2xl font-bold">FoodTracker</h1>
+                        <ButtonIcon
+                            icon="calendar-alt"
+                            onClick={() => setShowCalendar(!showCalendar)}
+                        />
+                    </header>
+                    
+                    {showCalendar && (
+                        <Calendar 
+                            onSelectDate={setCurrentDate}
+                            selectedDate={currentDate}
+                            monthData={monthData}
+                        />
+                    )}
+                    
+                    <div className="mb-6 flex justify-between items-center">
+                        <ButtonIcon
+                            icon="chevron-left"
+                            onClick={() => {
+                                const prevDate = new Date(currentDate);
+                                prevDate.setDate(prevDate.getDate() - 1);
+                                setCurrentDate(prevDate.toISOString().split('T')[0]);
+                            }}
+                            theme="primary"
+                        />
+                        <h2 className="text-xl font-semibold">
+                            {formatDate(currentDate)}
+                        </h2>
+                        <ButtonIcon
+                            icon="chevron-right"
+                            onClick={() => {
+                                const nextDate = new Date(currentDate);
+                                nextDate.setDate(nextDate.getDate() + 1);
+                                setCurrentDate(nextDate.toISOString().split('T')[0]);
+                            }}
+                            theme="primary"
+                        />
+                    </div>
+                    
+                    {dayData?.records?.length > 0 && (
+                        <NutritionSummary dayData={dayData} />
+                    )}
+
+                    <AddRecordForm 
+                        onAddRecord={handleAddRecord}
+                        date={currentDate}
+                    />
+                    
+                    {loading ? (
+                        <div className="text-center py-10">
+                            <i className="fas fa-spinner fa-spin fa-2x text-blue-500"></i>
+                            <p className="mt-2 text-gray-600">Caricamento...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {dayData?.records?.length > 0 ? (
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-4">Record del giorno</h3>
+                                    {dayData.records.map(record => (
+                                        <RecordItem 
+                                            key={record.uuid} 
+                                            record={record}
+                                            date={currentDate}
+                                            onEdit={handleEditRecord}
+                                            onDelete={handleDeleteRecord}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                                    <i className="fas fa-utensils text-gray-400 text-4xl mb-3"></i>
+                                    <p className="text-gray-500">
+                                        Nessun record per questa giornata. Aggiungi un nuovo alimento per iniziare a tenere traccia delle tue calorie.
+                                    </p>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
