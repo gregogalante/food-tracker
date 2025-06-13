@@ -342,9 +342,9 @@ function handleGetMonth() {
     
     $filePath = getMonthFilePath($month);
     $data = readFileData($filePath);
-    
+
     if ($data === null) {
-        respond(true, '', 200, ['days' => []]);
+        respond(true, '', 200, []);
     } else {
         respond(true, '', 200, $data['days']);
     }

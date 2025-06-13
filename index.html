@@ -621,9 +621,8 @@
                         >
                             <i className="fas fa-chevron-left"></i>
                         </button>
-                        <h3 className="text-lg font-medium">
+                        <h3 className={'text-lg font-medium'}>
                             {monthNames[currentMonth.month]} {currentMonth.year}
-                            {loading && <i className="fas fa-spinner fa-spin ml-2 text-sm text-gray-500"></i>}
                         </h3>
                         <button 
                             onClick={nextMonth}
@@ -633,7 +632,7 @@
                         </button>
                     </div>
                     
-                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                    <div className={"grid grid-cols-7 gap-1 text-center mb-2"}>
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
                             <div key={idx} className="text-sm font-medium text-gray-500">
                                 {day}
@@ -641,7 +640,7 @@
                         ))}
                     </div>
                     
-                    <div className="grid grid-cols-7 gap-1 text-center">
+                    <div className={`grid grid-cols-7 gap-1 text-center ${loading ? 'animate-pulse' : ''}`}>
                         {days.map((day, idx) => (
                             <div key={idx} className="aspect-square">
                                 {!day.empty && (
@@ -685,8 +684,8 @@
                 ${theme === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
                 ${theme === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : ''}
                 ${theme === 'white' ? 'bg-white text-blue-600 hover:bg-gray-100' : ''}
-                ${loading ? 'animated-pulse' : ''}
-                ${disabled ? 'opacity-70 cursor-not-allowed' : ''}
+                ${loading ? 'animate-pulse cursor-wait' : ''}
+                ${disabled && !loading ? 'opacity-50 cursor-not-allowed' : ''}
                 ${className || ''}`;
             
             return (
