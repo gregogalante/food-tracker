@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-100">
-    <div id="root" class="container mx-auto py-4 px-4 max-w-4xl"></div>
+    <div id="root" class="container mx-auto max-w-3xl"></div>
     
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -125,9 +125,9 @@
             };
             
             return (
-                <div className="flex items-center justify-center min-h-screen">
+                <div className="flex items-center justify-center min-h-screen p-4">
                     <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                        <h1 className="text-2xl font-bold text-center mb-6">FoodTracker</h1>
+                        <h1 className="text-2xl font-bold text-center mb-6">Food Tracker</h1>
                         <p className="text-gray-600 text-center mb-6">
                             Enter your 6-digit authentication code
                         </p>
@@ -192,7 +192,7 @@
             
             <div className="flex justify-between items-center mb-2">
                 <span>Calories</span>
-                <span className={`font-medium ${targetReached ? 'text-red-500' : 'text-green-500'}`}>
+                <span className={`font-bold ${targetReached ? 'text-red-500' : 'text-green-500'}`}>
                     {totals.calories.toFixed(0)} / {DAILY_TARGETS.calories} kcal
                 </span>
             </div>
@@ -206,8 +206,8 @@
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <div className="flex justify-between text-sm mb-2">
-                                <span>Carb.</span>
-                                <span>{totals.carbs.toFixed(0)}g</span>
+                                <span style={{ fontSize: 12 }}>Carb.</span>
+                                <span className="font-bold" style={{ fontSize: 12 }}>{totals.carbs.toFixed(0)} / {DAILY_TARGETS.carbs} g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
@@ -219,8 +219,8 @@
                         
                         <div>
                             <div className="flex justify-between text-sm mb-2">
-                                <span>Prot.</span>
-                                <span>{totals.proteins.toFixed(0)}g</span>
+                                <span style={{ fontSize: 12 }}>Prot.</span>
+                                <span className="font-bold" style={{ fontSize: 12 }}>{totals.proteins.toFixed(0)} / {DAILY_TARGETS.proteins} g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
@@ -232,8 +232,8 @@
                         
                         <div>
                             <div className="flex justify-between text-sm mb-2">
-                                <span>Fats</span>
-                                <span>{totals.fats.toFixed(0)}g</span>
+                                <span style={{ fontSize: 12 }}>Fats</span>
+                                <span className="font-bold" style={{ fontSize: 12 }}>{totals.fats.toFixed(0)} / {DAILY_TARGETS.fats} g</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
@@ -482,7 +482,7 @@
                             type="primary"
                             loading={loading}
                             disabled={loading || !input.trim()}
-                            label="Add"
+                            label="Add food"
                         />
                     </div>
                 </form>
@@ -821,100 +821,95 @@
                 return new Date(dateString).toLocaleDateString('en-US', options);
             };
 
-            if (authenticating) {
-                return (
-                    <div className="flex items-center justify-center h-screen">
-                        <i className="fas fa-spinner fa-spin text-3xl text-blue-500"></i>
-                    </div>
-                );
-            }
-            
-            if (!authenticated) {
-                return <Auth onAuthenticate={() => setAuthenticated(true)} />;
-            }
-            
+            if (authenticating) return null;
+
+            if (!authenticated) return <Auth onAuthenticate={() => setAuthenticated(true)} />;
+
             return (
-                <div className="">
-                    <header className="bg-blue-600 text-white shadow-md py-4 px-4 mb-6 flex justify-between items-center rounded">
-                        <h1 className="text-2xl font-bold">FoodTracker</h1>
+                <>
+                    <header className="bg-blue-600 text-white shadow-md py-4 h-20 px-4 flex justify-between items-center fixed top-0 left-0 w-full z-20">
+                        <h1 className="text-2xl font-bold">Food Tracker</h1>
                         <ButtonIcon
                             icon="calendar-alt"
                             onClick={() => setShowCalendar(!showCalendar)}
+                            theme="white"
                         />
                     </header>
-                    
-                    {showCalendar && (
+
+                    <div className={`fixed z-10 transition-transform ${showCalendar ? 'translate-y-0' : '-translate-y-full'} transform left-[50%] -translate-x-1/2 w-full max-w-md top-0 pt-20`}>
                         <Calendar 
-                            onSelectDate={setCurrentDate}
+                            onSelectDate={(currentDate) => {
+                                setCurrentDate(currentDate);
+                                setShowCalendar(false);
+                            }}
                             selectedDate={currentDate}
                             monthData={monthData}
                         />
-                    )}
-                    
-                    <div className="mb-6 flex justify-between items-center">
-                        <ButtonIcon
-                            icon="chevron-left"
-                            onClick={() => {
-                                const prevDate = new Date(currentDate);
-                                prevDate.setDate(prevDate.getDate() - 1);
-                                setCurrentDate(prevDate.toISOString().split('T')[0]);
-                            }}
-                            theme="primary"
-                        />
-                        <h2 className="text-xl font-semibold">
-                            {formatDate(currentDate)}
-                        </h2>
-                        <ButtonIcon
-                            icon="chevron-right"
-                            onClick={() => {
-                                const nextDate = new Date(currentDate);
-                                nextDate.setDate(nextDate.getDate() + 1);
-                                setCurrentDate(nextDate.toISOString().split('T')[0]);
-                            }}
-                            theme="primary"
-                        />
                     </div>
-                    
-                    {dayData?.records?.length > 0 && (
-                        <NutritionSummary dayData={dayData} />
-                    )}
 
-                    <AddRecordForm 
-                        onAddRecord={handleAddRecord}
-                        date={currentDate}
-                    />
-                    
-                    {loading ? (
-                        <div className="text-center py-10">
-                            <i className="fas fa-spinner fa-spin fa-2x text-blue-500"></i>
-                            <p className="mt-2 text-gray-600">Loading...</p>
+                    <div className={`p-4 pt-28 ${showCalendar ? 'opacity-25 pointer-events-none blur-sm' : ''} animate-fade-in transition-all duration-300`}>                 
+                        <div className="mb-6 flex justify-between items-center">
+                            <ButtonIcon
+                                icon="chevron-left"
+                                onClick={() => {
+                                    const prevDate = new Date(currentDate);
+                                    prevDate.setDate(prevDate.getDate() - 1);
+                                    setCurrentDate(prevDate.toISOString().split('T')[0]);
+                                }}
+                                theme="primary"
+                            />
+                            <h2 className="text-xl font-semibold">
+                                {formatDate(currentDate)}
+                            </h2>
+                            <ButtonIcon
+                                icon="chevron-right"
+                                onClick={() => {
+                                    const nextDate = new Date(currentDate);
+                                    nextDate.setDate(nextDate.getDate() + 1);
+                                    setCurrentDate(nextDate.toISOString().split('T')[0]);
+                                }}
+                                theme="primary"
+                            />
                         </div>
-                    ) : (
-                        <>
-                            {dayData?.records?.length > 0 ? (
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-4">Day Records</h3>
-                                    {dayData.records.map(record => (
-                                        <RecordItem 
-                                            key={record.uuid} 
-                                            record={record}
-                                            date={currentDate}
-                                            onEdit={handleEditRecord}
-                                            onDelete={handleDeleteRecord}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                                    <i className="fas fa-utensils text-gray-400 text-4xl mb-3"></i>
-                                    <p className="text-gray-500">
-                                        No records for this day. Add a new food to start tracking your calories.
-                                    </p>
-                                </div>
+
+                        <div className={`${loading ? 'opacity-0 pointer-events-none' : ''} animate-fade-in transition-all duration-300`}>
+                            {dayData?.records?.length > 0 && (
+                                <NutritionSummary dayData={dayData} />
                             )}
-                        </>
-                    )}
-                </div>
+
+                            <AddRecordForm 
+                                onAddRecord={handleAddRecord}
+                                date={currentDate}
+                            />
+                            
+                            {loading ? null : (
+                                <>
+                                    {dayData?.records?.length > 0 ? (
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Day Records</h3>
+                                            {dayData.records.map(record => (
+                                                <RecordItem 
+                                                    key={record.uuid} 
+                                                    record={record}
+                                                    date={currentDate}
+                                                    onEdit={handleEditRecord}
+                                                    onDelete={handleDeleteRecord}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                                            <i className="fas fa-utensils text-gray-400 text-4xl mb-3"></i>
+                                            <p className="text-gray-500">
+                                                No records for this day. Add a new food to start tracking your calories.
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </>
             );
         }
         

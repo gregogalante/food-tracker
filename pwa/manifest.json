@@ -1,6 +1,6 @@
 {
-  "name": "FoodTracker",
-  "short_name": "FoodTracker",
+  "name": "Food Tracker",
+  "short_name": "Food Tracker",
   "start_url": "/ft",
   "display": "standalone",
   "orientation": "portrait",
