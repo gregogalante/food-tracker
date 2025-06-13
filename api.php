@@ -1,26 +1,26 @@
 <?php
-// Configurazione dell'applicazione
+// Application configuration
 header('Content-Type: application/json');
 
-// Import config
+// Import configuration
 require './config.php';
 
-// Assicurarsi che la cartella data esista
+// Make sure the data folder exists
 if (!file_exists(DATA_FOLDER)) {
     mkdir(DATA_FOLDER, 0777, true);
 }
 
-// Recupero dell'azione dalla query string
+// Get action from query string
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
-// Controllo se l'utente è autenticato (tranne per l'azione di autenticazione)
+// Check if user is authenticated (except for authentication actions)
 if ($action !== 'authenticate' && $action !== 'check-auth') {
     if (!isAuthenticated()) {
-        respond(false, 'Non autenticato', 401);
+        respond(false, 'Not authenticated', 401);
     }
 }
 
-// Routing delle azioni
+// Action routing
 switch ($action) {
     case 'authenticate':
         handleAuthentication();
@@ -47,21 +47,21 @@ switch ($action) {
         handleGetConfig();
         break;
     default:
-        respond(false, 'Azione non valida');
+        respond(false, 'Invalid action');
 }
 
-// Funzione per verificare l'autenticazione
+// Function to verify authentication
 function isAuthenticated() {
     return isset($_COOKIE[COOKIE_NAME]) && $_COOKIE[COOKIE_NAME] === hash('sha256', AUTH_CODE);
 }
 
-// Funzione per impostare il cookie di autenticazione
+// Function to set authentication cookie
 function setAuthCookie() {
     $hash = hash('sha256', AUTH_CODE);
     setcookie(COOKIE_NAME, $hash, time() + COOKIE_DURATION, '/');
 }
 
-// Funzione per rispondere con JSON
+// Function to respond with JSON
 function respond($success, $message = '', $status = 200, $data = null) {
     http_response_code($status);
     echo json_encode([
@@ -72,12 +72,12 @@ function respond($success, $message = '', $status = 200, $data = null) {
     exit;
 }
 
-// Funzione per ottenere il body della richiesta
+// Function to get request body
 function getRequestBody() {
     return json_decode(file_get_contents('php://input'), true);
 }
 
-// Funzione per generare un UUID
+// Function to generate UUID
 function generateUUID() {
     return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand(0, 0xffff), mt_rand(0, 0xffff),
@@ -88,17 +88,17 @@ function generateUUID() {
     );
 }
 
-// Funzione per ottenere il percorso del file giornaliero
+// Function to get daily file path
 function getDayFilePath($date) {
     return DATA_FOLDER . '/day_' . $date . '.json';
 }
 
-// Funzione per ottenere il percorso del file mensile
+// Function to get monthly file path
 function getMonthFilePath($month) {
     return DATA_FOLDER . '/month_' . $month . '.json';
 }
 
-// Funzione per leggere i dati di un file
+// Function to read data from a file
 function readFileData($filePath) {
     if (!file_exists($filePath)) {
         return null;
@@ -108,38 +108,38 @@ function readFileData($filePath) {
     return json_decode($data, true);
 }
 
-// Funzione per scrivere i dati in un file
+// Function to write data to a file
 function writeFileData($filePath, $data) {
     file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
 }
 
-// Funzione per aggiornare il file mensile
+// Function to update monthly file
 function updateMonthFile($date, $dayData) {
     $month = substr($date, 0, 7); // YYYY-MM
     $monthFilePath = getMonthFilePath($month);
     
-    // Carica i dati mensili esistenti o inizializza un nuovo array
+    // Load existing monthly data or initialize a new array
     $monthData = readFileData($monthFilePath) ?: ['days' => []];
     
-    // Calcola i totali del giorno
+    // Calculate day totals
     $dayTotals = [
         'date' => $date,
-        'calorie' => 0,
-        'carboidrati' => 0,
-        'proteine' => 0,
-        'grassi' => 0
+        'calories' => 0,
+        'carbs' => 0,
+        'proteins' => 0,
+        'fats' => 0
     ];
     
     if (isset($dayData['records']) && is_array($dayData['records'])) {
         foreach ($dayData['records'] as $record) {
-            $dayTotals['calorie'] += floatval($record['calorie']);
-            $dayTotals['carboidrati'] += floatval($record['grammi_carboidrati']);
-            $dayTotals['proteine'] += floatval($record['grammi_proteine']);
-            $dayTotals['grassi'] += floatval($record['grammi_grassi']);
+            $dayTotals['calories'] += floatval($record['calories']);
+            $dayTotals['carbs'] += floatval($record['gram_carbs']);
+            $dayTotals['proteins'] += floatval($record['gram_proteins']);
+            $dayTotals['fats'] += floatval($record['gram_fats']);
         }
     }
     
-    // Aggiorna o aggiungi l'elemento nel file mensile
+    // Update or add the element in the monthly file
     $dayIndex = -1;
     foreach ($monthData['days'] as $index => $day) {
         if ($day['date'] === $date) {
@@ -154,60 +154,60 @@ function updateMonthFile($date, $dayData) {
         $monthData['days'][] = $dayTotals;
     }
     
-    // Ordina i giorni per data
+    // Sort days by date
     usort($monthData['days'], function($a, $b) {
         return strcmp($a['date'], $b['date']);
     });
     
-    // Salva i dati mensili
+    // Save monthly data
     writeFileData($monthFilePath, $monthData);
 }
 
-// Funzione per chiamare l'API OpenAI
+// Function to call OpenAI API
 function callOpenAI($input) {
-    // Definisco la cartella di cache
+    // Define cache folder
     define('CACHE_FOLDER', DATA_FOLDER . '/cache-llm');
     
-    // Assicuriamoci che la directory della cache esista
+    // Make sure the cache directory exists
     if (!file_exists(CACHE_FOLDER)) {
         mkdir(CACHE_FOLDER, 0777, true);
     }
     
-    // Genero un hash dell'input per usarlo come chiave nella cache
+    // Generate input hash to use as cache key
     $inputHash = md5($input);
     $cacheFilePath = CACHE_FOLDER . '/' . $inputHash . '.json';
     
-    // Verifica se abbiamo già la risposta in cache
+    // Check if we already have the response in cache
     if (file_exists($cacheFilePath)) {
         $cachedData = readFileData($cacheFilePath);
         if ($cachedData) {
-            // Risposta trovata in cache
+            // Response found in cache
             return $cachedData;
         }
     }
     
     if (empty(OPENAI_API_KEY) || OPENAI_API_KEY === 'your-api-key-here') {
-        // Se non è configurata l'API key, restituiamo dati simulati per test
+        // If API key is not configured, return simulated data for testing
         $result = [
-            'calorie' => rand(100, 800),
-            'grammi_carboidrati' => rand(10, 100),
-            'grammi_proteine' => rand(5, 50),
-            'grammi_grassi' => rand(3, 30),
-            'feedback' => 'Questa è una simulazione di feedback. Configura la tua OpenAI API key per dati reali.'
+            'calories' => rand(100, 800),
+            'gram_carbs' => rand(10, 100),
+            'gram_proteins' => rand(5, 50),
+            'gram_fats' => rand(3, 30),
+            'feedback' => 'This is a simulated feedback. Configure your OpenAI API key for real data.'
         ];
         
-        // Salva la simulazione in cache
+        // Save simulation to cache
         writeFileData($cacheFilePath, $result);
         return $result;
     }
     
-    // Prepara i dati da inviare all'API
+    // Prepare data to send to API
     $data = [
         'model' => 'gpt-4o-mini',
         'messages' => [
             [
                 'role' => 'system',
-                'content' => "Sei un nutrizionista esperto. Analizza l'input dell'utente e fornisci una stima delle calorie e dei macronutrienti per gli alimenti descritti. Fornisci anche un breve feedback nutrizionale. Rispondi SOLO con un JSON nel seguente formato: {\"calorie\": numero, \"grammi_carboidrati\": numero, \"grammi_proteine\": numero, \"grammi_grassi\": numero, \"feedback\": \"testo\"}."
+                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\"}."
             ],
             [
                 'role' => 'user',
@@ -217,7 +217,7 @@ function callOpenAI($input) {
         'temperature' => 0.7
     ];
     
-    // Prepara la richiesta curl
+    // Prepare curl request
     $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -227,37 +227,37 @@ function callOpenAI($input) {
         'Authorization: Bearer ' . OPENAI_API_KEY
     ]);
     
-    // Esegui la richiesta
+    // Execute request
     $response = curl_exec($ch);
     
-    // Verifica errori
+    // Check errors
     if (curl_errno($ch)) {
-        error_log('Errore cURL: ' . curl_error($ch));
+        error_log('cURL Error: ' . curl_error($ch));
         curl_close($ch);
         return false;
     }
     
     curl_close($ch);
     
-    // Decodifica la risposta
+    // Decode response
     $responseData = json_decode($response, true);
     
     if (!isset($responseData['choices'][0]['message']['content'])) {
-        error_log('Risposta OpenAI non valida: ' . print_r($responseData, true));
+        error_log('Invalid OpenAI response: ' . print_r($responseData, true));
         return false;
     }
     
-    // Estrai e decodifica il JSON dalla risposta
+    // Extract and decode JSON from response
     $content = $responseData['choices'][0]['message']['content'];
     
-    // A volte l'API potrebbe includere backtick nel formato ```json ... ``` 
+    // Sometimes API might include backticks in format ```json ... ``` 
     $content = preg_replace('/```json\s*(.*?)\s*```/s', '$1', $content);
     $content = preg_replace('/```\s*(.*?)\s*```/s', '$1', $content);
     
     $data = json_decode($content, true);
     
     if (!$data) {
-        error_log('Impossibile analizzare la risposta JSON: ' . $content);
+        error_log('Unable to parse JSON response: ' . $content);
         return false;
     }
     
@@ -267,23 +267,23 @@ function callOpenAI($input) {
     return $data;
 }
 
-// Handler per l'autenticazione
+// Handler for authentication
 function handleAuthentication() {
     $body = getRequestBody();
     
     if (!isset($body['code'])) {
-        respond(false, 'Codice mancante');
+        respond(false, 'Missing code');
     }
     
     if ($body['code'] === AUTH_CODE) {
         setAuthCookie();
-        respond(true, 'Autenticazione riuscita');
+        respond(true, 'Authentication successful');
     } else {
-        respond(false, 'Codice non valido');
+        respond(false, 'Invalid code');
     }
 }
 
-// Handler per scaricare le configurazioni
+// Handler to download configurations
 function handleGetConfig() {
     $config = [
         'daily_calories_target' => DAILY_CALORIES_TARGET,
@@ -295,29 +295,29 @@ function handleGetConfig() {
     respond(true, '', 200, $config);
 }
 
-// Handler per verificare l'autenticazione
+// Handler to verify authentication
 function handleCheckAuth() {
-    respond(isAuthenticated(), isAuthenticated() ? 'Autenticato' : 'Non autenticato');
+    respond(isAuthenticated(), isAuthenticated() ? 'Authenticated' : 'Not authenticated');
 }
 
-// Handler per ottenere i dati del giorno
+// Handler to get day data
 function handleGetDate() {
     if (!isset($_GET['date'])) {
-        respond(false, 'Data mancante');
+        respond(false, 'Missing date');
     }
     
     $date = $_GET['date'];
     
-    // Verifica formato data
+    // Verify date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        respond(false, 'Formato data non valido (richiesto YYYY-MM-DD)');
+        respond(false, 'Invalid date format (required YYYY-MM-DD)');
     }
     
     $filePath = getDayFilePath($date);
     $data = readFileData($filePath);
     
     if ($data === null) {
-        // Nessun record per questa data
+        // No record for this date
         $data = [
             'date' => $date,
             'records' => []
@@ -327,17 +327,17 @@ function handleGetDate() {
     respond(true, '', 200, $data);
 }
 
-// Handler per ottenere i dati del mese
+// Handler to get month data
 function handleGetMonth() {
     if (!isset($_GET['month'])) {
-        respond(false, 'Mese mancante');
+        respond(false, 'Missing month');
     }
     
     $month = $_GET['month'];
     
-    // Verifica formato mese
+    // Verify month format
     if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
-        respond(false, 'Formato mese non valido (richiesto YYYY-MM)');
+        respond(false, 'Invalid month format (required YYYY-MM)');
     }
     
     $filePath = getMonthFilePath($month);
@@ -350,22 +350,22 @@ function handleGetMonth() {
     }
 }
 
-// Handler per creare un nuovo record
+// Handler to create a new record
 function handleCreateRecord() {
     $body = getRequestBody();
     
     if (!isset($body['input'])) {
-        respond(false, 'Input mancante');
+        respond(false, 'Missing input');
     }
     
     $date = isset($body['date']) ? $body['date'] : date('Y-m-d');
     
-    // Verifica formato data
+    // Verify date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        respond(false, 'Formato data non valido (richiesto YYYY-MM-DD)');
+        respond(false, 'Invalid date format (required YYYY-MM-DD)');
     }
     
-    // Ottieni i dati del giorno o inizializza
+    // Get day data or initialize
     $filePath = getDayFilePath($date);
     $dayData = readFileData($filePath);
     
@@ -376,11 +376,11 @@ function handleCreateRecord() {
         ];
     }
     
-    // Chiama OpenAI per ottenere i dati nutrizionali
+    // Call OpenAI to get nutritional data
     $nutritionData = callOpenAI($body['input']);
     
     if ($nutritionData === false) {
-        respond(false, 'Errore nell\'analisi dell\'input');
+        respond(false, 'Error analyzing input');
     }
     
     // Crea il nuovo record
@@ -388,10 +388,10 @@ function handleCreateRecord() {
         'uuid' => generateUUID(),
         'timestamp' => time(),
         'input' => $body['input'],
-        'calorie' => $nutritionData['calorie'],
-        'grammi_carboidrati' => $nutritionData['grammi_carboidrati'],
-        'grammi_proteine' => $nutritionData['grammi_proteine'],
-        'grammi_grassi' => $nutritionData['grammi_grassi'],
+        'calories' => $nutritionData['calories'],
+        'gram_carbs' => $nutritionData['gram_carbs'],
+        'gram_proteins' => $nutritionData['gram_proteins'],
+        'gram_fats' => $nutritionData['gram_fats'],
         'feedback' => $nutritionData['feedback']
     ];
     
@@ -403,39 +403,39 @@ function handleCreateRecord() {
         return $b['timestamp'] - $a['timestamp'];
     });
     
-    // Salva i dati del giorno
+    // Save day data
     writeFileData($filePath, $dayData);
     
-    // Aggiorna il file mensile
+    // Update monthly file
     updateMonthFile($date, $dayData);
     
-    respond(true, 'Record creato con successo', 200, $record);
+    respond(true, 'Record created successfully', 200, $record);
 }
 
-// Handler per aggiornare un record esistente
+// Handler to update an existing record
 function handleUpdateRecord() {
     if (!isset($_GET['date']) || !isset($_GET['uuid'])) {
-        respond(false, 'Data o UUID mancante');
+        respond(false, 'Missing date or UUID');
     }
     
     $date = $_GET['date'];
     $uuid = $_GET['uuid'];
     $body = getRequestBody();
     
-    // Verifica formato data
+    // Verify date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        respond(false, 'Formato data non valido (richiesto YYYY-MM-DD)');
+        respond(false, 'Invalid date format (required YYYY-MM-DD)');
     }
     
-    // Carica i dati del giorno
+    // Load day data
     $filePath = getDayFilePath($date);
     $dayData = readFileData($filePath);
     
     if ($dayData === null) {
-        respond(false, 'Nessun dato trovato per questa data');
+        respond(false, 'No data found for this date');
     }
     
-    // Trova il record da aggiornare
+    // Find record to update
     $recordIndex = -1;
     foreach ($dayData['records'] as $index => $record) {
         if ($record['uuid'] === $uuid) {
@@ -445,26 +445,26 @@ function handleUpdateRecord() {
     }
     
     if ($recordIndex === -1) {
-        respond(false, 'Record non trovato');
+        respond(false, 'Record not found');
     }
     
     // Aggiorna i campi modificabili
     $record = $dayData['records'][$recordIndex];
     
-    if (isset($body['calorie'])) {
-        $record['calorie'] = $body['calorie'];
+    if (isset($body['calories'])) {
+        $record['calories'] = $body['calories'];
     }
     
-    if (isset($body['grammi_carboidrati'])) {
-        $record['grammi_carboidrati'] = $body['grammi_carboidrati'];
+    if (isset($body['gram_carbs'])) {
+        $record['gram_carbs'] = $body['gram_carbs'];
     }
     
-    if (isset($body['grammi_proteine'])) {
-        $record['grammi_proteine'] = $body['grammi_proteine'];
+    if (isset($body['gram_proteins'])) {
+        $record['gram_proteins'] = $body['gram_proteins'];
     }
     
-    if (isset($body['grammi_grassi'])) {
-        $record['grammi_grassi'] = $body['grammi_grassi'];
+    if (isset($body['gram_fats'])) {
+        $record['gram_fats'] = $body['gram_fats'];
     }
     
     if (isset($body['feedback'])) {
@@ -474,35 +474,35 @@ function handleUpdateRecord() {
     // Aggiorna il record
     $dayData['records'][$recordIndex] = $record;
     
-    // Salva i dati del giorno
+    // Save day data
     writeFileData($filePath, $dayData);
     
-    // Aggiorna il file mensile
+    // Update monthly file
     updateMonthFile($date, $dayData);
     
-    respond(true, 'Record aggiornato con successo', 200, $record);
+    respond(true, 'Record updated successfully', 200, $record);
 }
 
-// Handler per eliminare un record esistente
+// Handler to delete an existing record
 function handleDeleteRecord() {
     if (!isset($_GET['date']) || !isset($_GET['uuid'])) {
-        respond(false, 'Data o UUID mancante');
+        respond(false, 'Missing date or UUID');
     }
     
     $date = $_GET['date'];
     $uuid = $_GET['uuid'];
     
-    // Verifica formato data
+    // Verify date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        respond(false, 'Formato data non valido (richiesto YYYY-MM-DD)');
+        respond(false, 'Invalid date format (required YYYY-MM-DD)');
     }
     
-    // Carica i dati del giorno
+    // Load day data
     $filePath = getDayFilePath($date);
     $dayData = readFileData($filePath);
     
     if ($dayData === null) {
-        respond(false, 'Nessun dato trovato per questa data');
+        respond(false, 'No data found for this date');
     }
     
     // Trova e rimuovi il record
@@ -517,18 +517,18 @@ function handleDeleteRecord() {
     }
     
     if (!$found) {
-        respond(false, 'Record non trovato');
+        respond(false, 'Record not found');
     }
     
-    // Aggiorna i record
+    // Update records
     $dayData['records'] = $newRecords;
     
-    // Salva i dati del giorno
+    // Save day data
     writeFileData($filePath, $dayData);
     
-    // Aggiorna il file mensile
+    // Update monthly file
     updateMonthFile($date, $dayData);
     
-    respond(true, 'Record eliminato con successo');
+    respond(true, 'Record deleted successfully');
 }
 ?>

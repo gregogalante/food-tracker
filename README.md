@@ -1,4 +1,4 @@
-# Food Tracker
+# Food Tracker - Calorie Monitoring
 
 <img src="/icon.png" alt="Food Tracker Icon" width="100">
 
