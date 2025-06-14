@@ -207,7 +207,7 @@ function callOpenAI($input) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\"}."
+                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Multiply the calories and macronutrients for the quantity defined by the user; the default quantity is 1. Write the feedback using the language ".FEEDBACK_LOCALE.". Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\"}."
             ],
             [
                 'role' => 'user',
