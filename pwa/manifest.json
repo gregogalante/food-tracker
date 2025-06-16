@@ -1,6 +1,7 @@
 {
   "name": "Food Tracker",
   "short_name": "Food Tracker",
+  "scope": "/ft",
   "start_url": "/ft",
   "display": "standalone",
   "orientation": "portrait",
