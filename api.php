@@ -193,6 +193,7 @@ function callOpenAI($input) {
             'gram_carbs' => rand(10, 100),
             'gram_proteins' => rand(5, 50),
             'gram_fats' => rand(3, 30),
+            'quantity' => rand(1, 5),
             'feedback' => 'This is a simulated feedback. Configure your OpenAI API key for real data.'
         ];
         
@@ -207,7 +208,7 @@ function callOpenAI($input) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Multiply the calories and macronutrients for the quantity defined by the user; the default quantity is 1. Write the feedback using the language ".FEEDBACK_LOCALE.". Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\"}."
+                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Multiply the calories and macronutrients for the quantity defined by the user; the default quantity is 1. Write the feedback using the language ".FEEDBACK_LOCALE.". Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\", \"quantity\": number}."
             ],
             [
                 'role' => 'user',
@@ -376,6 +377,8 @@ function handleCreateRecord() {
         ];
     }
     
+    // Normalizza l'input: trim e downcase
+    $body['input'] = strtolower(trim($body['input']));
     // Call OpenAI to get nutritional data
     $nutritionData = callOpenAI($body['input']);
     
@@ -392,7 +395,8 @@ function handleCreateRecord() {
         'gram_carbs' => $nutritionData['gram_carbs'],
         'gram_proteins' => $nutritionData['gram_proteins'],
         'gram_fats' => $nutritionData['gram_fats'],
-        'feedback' => $nutritionData['feedback']
+        'feedback' => $nutritionData['feedback'],
+        'quantity' => $nutritionData['quantity']
     ];
     
     // Aggiungi il record ai dati del giorno
@@ -448,29 +452,31 @@ function handleUpdateRecord() {
         respond(false, 'Record not found');
     }
     
-    // Aggiorna i campi modificabili
+    // Normalizza l'input se presente: trim e downcase
     $record = $dayData['records'][$recordIndex];
-    
+
+    if (isset($body['input'])) {
+        $record['input'] = strtolower(trim($body['input']));
+    }
     if (isset($body['calories'])) {
         $record['calories'] = $body['calories'];
     }
-    
     if (isset($body['gram_carbs'])) {
         $record['gram_carbs'] = $body['gram_carbs'];
     }
-    
     if (isset($body['gram_proteins'])) {
         $record['gram_proteins'] = $body['gram_proteins'];
     }
-    
     if (isset($body['gram_fats'])) {
         $record['gram_fats'] = $body['gram_fats'];
     }
-    
     if (isset($body['feedback'])) {
         $record['feedback'] = $body['feedback'];
     }
-    
+    if (isset($body['quantity'])) {
+        $record['quantity'] = $body['quantity'];
+    }
+
     // Aggiorna il record
     $dayData['records'][$recordIndex] = $record;
     

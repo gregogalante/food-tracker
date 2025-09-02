@@ -247,7 +247,7 @@
             );
         }
 
-        function RecordItem({ record, onEdit, onDelete, date }) {
+        function RecordItem({ record, onEdit, onDelete, onDuplicate, date }) {
             const [isEditing, setIsEditing] = useState(false);
             const [editedRecord, setEditedRecord] = useState({...record});
             
@@ -295,6 +295,32 @@
                     }
                 }
             };
+
+            const handleDuplicate = async () => {
+                try {
+                    const response = await fetch(`api.php?action=record-create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            input: record.input,
+                            date: date
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        onDuplicate(data.data);
+                    } else {
+                        alert(data.message || 'Error during duplication');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Connection error');
+                }
+            };
             
             return (
                 <div className="bg-white rounded-lg shadow-md p-4 mb-4">
@@ -303,11 +329,17 @@
                             <div className="flex justify-between items-center mb-4">
                                 <div className="mr-3">
                                     <p className="font-bold text-xl">{record.calories} kcal</p>
+                                    <p className="text-sm text-gray-600">Quantità: {record.quantity || 1}</p>
                                 </div>
                                 <div className="flex space-x-2">
                                     <ButtonIcon
                                         icon="edit"
                                         onClick={() => setIsEditing(true)}
+                                        theme="primary"
+                                    />
+                                    <ButtonIcon
+                                        icon="copy"
+                                        onClick={handleDuplicate}
                                         theme="primary"
                                     />
                                     <ButtonIcon
@@ -561,7 +593,7 @@
                     
                     // Check if the day has data
                     const dayData = currentMonthData?.days?.find(day => day.date === dateStr);
-                    const hasData = !!dayData;
+                    const hasData = !!dayData && (dayData.carbs > 0 || dayData.proteins > 0 || dayData.fats > 0 || dayData.calories > 0);
                     // Check if daily calories have been exceeded
                     const carbsExceeded = dayData && dayData.carbs >= DAILY_TARGETS.carbs;
                     const proteinsExceeded = dayData && dayData.proteins >= DAILY_TARGETS.proteins;
@@ -793,6 +825,16 @@
                     };
                 });
             };
+
+            const handleDuplicateRecord = (record) => {
+                setDayData(prev => {
+                    const newRecords = [record, ...(prev?.records || [])];
+                    return {
+                        ...prev,
+                        records: newRecords
+                    };
+                });
+            };
             
             const handleEditRecord = (editedRecord) => {
                 setDayData(prev => {
@@ -894,6 +936,7 @@
                                                     date={currentDate}
                                                     onEdit={handleEditRecord}
                                                     onDelete={handleDeleteRecord}
+                                                    onDuplicate={handleDuplicateRecord}
                                                 />
                                             ))}
                                         </div>
