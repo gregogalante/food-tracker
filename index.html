@@ -389,6 +389,19 @@
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-gray-700 text-sm font-bold mb-1">
+                                        Quantity
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border border-gray-300 rounded"
+                                        value={editedRecord.quantity || 1}
+                                        onChange={(e) => setEditedRecord({...editedRecord, quantity: e.target.value})}
+                                        min="0.1"
+                                        step="0.1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-1">
                                         Calories (kcal)
                                     </label>
                                     <input
@@ -398,6 +411,9 @@
                                         onChange={(e) => setEditedRecord({...editedRecord, calories: e.target.value})}
                                     />
                                 </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                     <label className="block text-gray-700 text-sm font-bold mb-1">
                                         Carbs (g)
@@ -409,9 +425,6 @@
                                         onChange={(e) => setEditedRecord({...editedRecord, gram_carbs: e.target.value})}
                                     />
                                 </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-gray-700 text-sm font-bold mb-1">
                                         Proteins (g)
