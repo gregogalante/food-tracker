@@ -194,6 +194,7 @@ function callOpenAI($input) {
             'gram_proteins' => rand(5, 50),
             'gram_fats' => rand(3, 30),
             'quantity' => rand(1, 5),
+            'star_rating' => rand(1, 5),
             'feedback' => 'This is a simulated feedback. Configure your OpenAI API key for real data.'
         ];
         
@@ -208,7 +209,7 @@ function callOpenAI($input) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback. Multiply the calories and macronutrients for the quantity defined by the user; the default quantity is 1. Write the feedback using the language ".FEEDBACK_LOCALE.". Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\", \"quantity\": number}."
+                'content' => "You are an expert nutritionist. Analyze the user's input and provide an estimate of calories and macronutrients for the described foods. Also provide a brief nutritional feedback and a star rating of the meal's healthiness (1 - low, 5 - high). Multiply the calories and macronutrients for the quantity defined by the user; the default quantity is 1. Write the feedback using the language ".FEEDBACK_LOCALE.". Respond ONLY with a JSON in the following format: {\"calories\": number, \"gram_carbs\": number, \"gram_proteins\": number, \"gram_fats\": number, \"feedback\": \"text\", \"quantity\": number, \"star_rating\": number}."
             ],
             [
                 'role' => 'user',
@@ -396,7 +397,8 @@ function handleCreateRecord() {
         'gram_proteins' => $nutritionData['gram_proteins'],
         'gram_fats' => $nutritionData['gram_fats'],
         'feedback' => $nutritionData['feedback'],
-        'quantity' => $nutritionData['quantity']
+        'quantity' => $nutritionData['quantity'],
+        'star_rating' => isset($nutritionData['star_rating']) ? $nutritionData['star_rating'] : null
     ];
     
     // Aggiungi il record ai dati del giorno

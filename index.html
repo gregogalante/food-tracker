@@ -82,6 +82,34 @@
         };
         loadDailyTargets();
 
+        function StarRating({ rating, editable = false, onRatingChange = null }) {
+            const handleStarClick = (value) => {
+                if (editable && onRatingChange) {
+                    onRatingChange(value);
+                }
+            };
+
+            return (
+                <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <i
+                            key={star}
+                            className={`fas fa-star ${rating >= star ? 'text-yellow-500' : 'text-gray-300'} ${
+                                editable ? 'cursor-pointer hover:text-yellow-400' : ''
+                            }`}
+                            onClick={() => handleStarClick(star)}
+                            style={{ fontSize: '16px', marginRight: '2px' }}
+                        ></i>
+                    ))}
+                    {rating && (
+                        <span className="ml-2 text-sm text-gray-600">
+                            ({rating}/5)
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
         function Auth({ onAuthenticate }) {
             const [code, setCode] = useState('');
             const [error, setError] = useState('');
@@ -176,6 +204,12 @@
                 };
             }, { calories: 0, carbs: 0, proteins: 0, fats: 0 });
             
+            // Calculate the average star rating
+            const recordsWithRating = records.filter(record => record.star_rating && record.star_rating > 0);
+            const averageRating = recordsWithRating.length > 0 
+                ? recordsWithRating.reduce((sum, record) => sum + parseFloat(record.star_rating), 0) / recordsWithRating.length 
+                : null;
+            
             // Calculate percentages relative to targets
             const percentages = {
                 calories: (totals.calories / DAILY_TARGETS.calories) * 100,
@@ -189,6 +223,13 @@
             
             return (
                 <div className="bg-white rounded-lg shadow-md p-4 mb-6">            <h3 className="text-lg font-semibold mb-4">Day Summary</h3>
+            
+            {averageRating && (
+                <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                    <span className="font-medium">Health Rating</span>
+                    <StarRating rating={Math.round(averageRating * 10) / 10} />
+                </div>
+            )}
             
             <div className="flex justify-between items-center mb-2">
                 <span>Calories</span>
@@ -352,6 +393,12 @@
 
                             <p className="font-medium text-lg">{record.input}</p>
 
+                            {record.star_rating && (
+                                <div className="mt-2">
+                                    <StarRating rating={record.star_rating} />
+                                </div>
+                            )}
+
                             {record.feedback && (
                                 <p className="text-sm italic mt-2 text-gray-600">"{record.feedback}"</p>
                             )}
@@ -447,6 +494,17 @@
                                         onChange={(e) => setEditedRecord({...editedRecord, gram_fats: e.target.value})}
                                     />
                                 </div>
+                            </div>
+                            
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">
+                                    Health Rating (1=not healthy, 5=very healthy)
+                                </label>
+                                <StarRating 
+                                    rating={editedRecord.star_rating || 0} 
+                                    editable={true}
+                                    onRatingChange={(rating) => setEditedRecord({...editedRecord, star_rating: rating})}
+                                />
                             </div>
                             
                             <div className="flex justify-end space-x-2">
