@@ -478,6 +478,9 @@ function handleUpdateRecord() {
     if (isset($body['quantity'])) {
         $record['quantity'] = $body['quantity'];
     }
+    if (isset($body['star_rating'])) {
+        $record['star_rating'] = $body['star_rating'];
+    }
 
     // Aggiorna il record
     $dayData['records'][$recordIndex] = $record;

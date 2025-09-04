@@ -204,11 +204,20 @@
                 };
             }, { calories: 0, carbs: 0, proteins: 0, fats: 0 });
             
-            // Calculate the average star rating
-            const recordsWithRating = records.filter(record => record.star_rating && record.star_rating > 0);
-            const averageRating = recordsWithRating.length > 0 
-                ? recordsWithRating.reduce((sum, record) => sum + parseFloat(record.star_rating), 0) / recordsWithRating.length 
-                : null;
+            // Calculate the weighted average star rating (weighted by calories)
+            const recordsWithRating = records.filter(record => record.star_rating && record.star_rating > 0 && record.calories > 0);
+            let averageRating = null;
+            if (recordsWithRating.length > 0) {
+                const totalWeightedRating = recordsWithRating.reduce((sum, record) => {
+                    const calories = parseFloat(record.calories) || 0;
+                    const rating = parseFloat(record.star_rating) || 0;
+                    return sum + (rating * calories);
+                }, 0);
+                const totalCaloriesWithRating = recordsWithRating.reduce((sum, record) => {
+                    return sum + (parseFloat(record.calories) || 0);
+                }, 0);
+                averageRating = totalCaloriesWithRating > 0 ? totalWeightedRating / totalCaloriesWithRating : null;
+            }
             
             // Calculate percentages relative to targets
             const percentages = {
